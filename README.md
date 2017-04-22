@@ -21,12 +21,12 @@ Have someone use a ps4/ps3 controller to control the main Roomba.
 The Roombas will have cameras with color detection.
 There will be a GUI displaying the main Roomba's camera on the person's monitor and they will be controlling the main Roomba. They will control the Roomba to move towards other Roombas.
 
+Roles:
+Alvin: doing the color detection and probably another feature or two depending on how fast/well the color detection is done. (Probably designing and implementing Roomba movement) The color implementation will be done using the OpenCV module and PiCamera module for Python. The rest of project for Alvin's parts are going to be done in Python.  
 
-My role: I will be doing the color detection and probably another feature or two depending on how fast/well the color detection is done. (Probably designing and implementing Roomba movement)
+Paul: controlling the Roomba with a PS4 controller
 
-The color implementation will be done using the OpenCV module and PiCamera module for Python.
-
-The rest of project for my parts are going to be done in Python.  
+Greg: Setting up the camera view for the user-controlled Roomba, maybe GUI
 
 
 Possible suggestions:
