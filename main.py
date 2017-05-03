@@ -4,6 +4,7 @@ import serial               # PySerial: https://pypi.python.org/pypi/pyserial
 import time                 # for sleep()
 import sys                  # for exit()
 
+#setup code and etc.
 ser = serial.Serial() ser.baudrate = 115200
 ser.port = "/dev/ttyUSB0"   # if using Linux
 ser.timeout = 10            # time out in seconds
@@ -11,6 +12,7 @@ server=socket(AF_INET,SOCK_STREAM)
 host="192.168.1.114"
 port=5150
 server.connect((host,port))
+
 # Open serial port for communication
 ser.open()
 
@@ -41,8 +43,6 @@ def roombaCreate():
                 #send an OFF led to all of them by sending this line below
                 #ser.write(display["OFF"]())
             listOfRoombas.append(x)
-
-
 
 #Add in the amount of Roombas you're using and the colors on their heads
 #Initializes the other roombas to an off state and gives their colors
