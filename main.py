@@ -70,12 +70,12 @@ buffer=lambda:cliff(space,space,space,space) #Clears the LED display
 
 #LED displays, ON and Off are sent to other roombas.
 display={
-1: lambda:displayLED(first,space,space,space),
-2: lambda:displayLED(second,space,space,space),
-3: lambda:displayLED(third,space,space,space),
-4: lambda:displayLED(D,O,N,E),
-"ON":lambda:displayLED(O,N,space,space),
-"OFF":lambda:displayLED(O,F,F,space)
+    1: lambda:displayLED(first,space,space,space),
+    2: lambda:displayLED(second,space,space,space),
+    3: lambda:displayLED(third,space,space,space),
+    4: lambda:displayLED(D,O,N,E),
+    "ON":lambda:displayLED(O,N,space,space),
+    "OFF":lambda:displayLED(O,F,F,space)
 }
 
 #Turns on the main roomba
