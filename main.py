@@ -1,10 +1,9 @@
-import Roomba
+from Roomba import *
 from random import shuffle  # shuffle was for if we wanted a randomized order for colors.
 import serial               # PySerial: https://pypi.python.org/pypi/pyserial
 import time                 # for sleep()
 import sys                  # for exit()
 
-#setup code and etc.
 ser = serial.Serial() ser.baudrate = 115200
 ser.port = "/dev/ttyUSB0"   # if using Linux
 ser.timeout = 10            # time out in seconds
@@ -12,7 +11,6 @@ server=socket(AF_INET,SOCK_STREAM)
 host="192.168.1.114"
 port=5150
 server.connect((host,port))
-
 # Open serial port for communication
 ser.open()
 
@@ -22,36 +20,36 @@ if ser.isOpen():
 else:
     sys.exit()
 
-"""TODO make the other roombas move to some random position then make them
+#TODO
+"""
+make the other roombas move to some random position then make them
 wait until they are found
 """
-def roombaCreate():
+def roombaCreate(mainRoomba):
     """
     Initializes and sets the roombas states by creating them,
     setting their color according to the given colors in roombaColors
-    Then sets the color they follow by using the previous position in the array
+    Then sets the color they follow by using the previous color in the array
     """
     shuffle(roombaColors)
-    del listOfRoombas
+    roombaColors.insert(0,mainRoomba.color)
     listOfRoombas=[]
+    
     for i in range(0,3):
-            newRoomba=Roomba()
-            newRoomba.color=roombaColors[i]
-            if(i!=0):
-                newRooma.previousColor=roombaColors[i-1]
+            newRoomba=otherRoomba(roombaColors[i+1],roombaColors[i])
                 #TODO NETWORK
                 #send an OFF led to all of them by sending this line below
                 #ser.write(display["OFF"]())
-            listOfRoombas.append(x)
+            listOfRoombas.append(newRoomba)
 
 #Add in the amount of Roombas you're using and the colors on their heads
 #Initializes the other roombas to an off state and gives their colors
 roombaColors=["peach","purple","magenta"]
-roombaCreate()
 currentRound=0
+mainRoomba=MainRoomba("gold",roombaColors[currentRound])
+roombaCreate(mainRoomba)
 
 #Creates the main roomba and tells it that the next color it has to find.
-mainRoomba=MainRoomba("gold",roombaColors[currentRound])
 
 #All LED stuff, no need to touch.
 #Ascii values for LED stuff
@@ -70,12 +68,12 @@ buffer=lambda:cliff(space,space,space,space) #Clears the LED display
 
 #LED displays, ON and Off are sent to other roombas.
 display={
-    1: lambda:displayLED(first,space,space,space),
-    2: lambda:displayLED(second,space,space,space),
-    3: lambda:displayLED(third,space,space,space),
-    4: lambda:displayLED(D,O,N,E),
-    "ON":lambda:displayLED(O,N,space,space),
-    "OFF":lambda:displayLED(O,F,F,space)
+1: lambda:displayLED(first,space,space,space),
+2: lambda:displayLED(second,space,space,space),
+3: lambda:displayLED(third,space,space,space),
+4: lambda:displayLED(D,O,N,E),
+"ON":lambda:displayLED(O,N,space,space),
+"OFF":lambda:displayLED(O,F,F,space)
 }
 
 #Turns on the main roomba
@@ -94,11 +92,12 @@ while currentRound<roombaColors.len:
     if(mainRoomba.isCorrectColor(@@@@COLOR BACK FROM CAMERA))
         #TODO Send the ON LED to the other roomba and then turn it on so it starts driving.
         #Network configuration comes in here
-            if color in listOfRoombas:
-                color.state=true
-                if currentRound<roombaColors.len:
-                    mainRoomba.nextColor=roombaColors[currentRound+1]
-                    currentRound+=1
+        #Checks for the Roomba that contains the wanted color by the main Roomba.
+            for i in listOfRoombas:
+                if i.color==mainRoomba.nextColor:
+                    if currentRound<roombaColors.len:
+                        mainRoomba.nextColor=roombaColors[currentRound+1]
+                        currentRound+=1
 #LED display to indicate being done and then shuts off everything
 buffer()
 display[currentRound+1]()
