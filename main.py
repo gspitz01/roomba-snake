@@ -4,7 +4,8 @@ import serial               # PySerial: https://pypi.python.org/pypi/pyserial
 import time                 # for sleep()
 import sys                  # for exit()
 
-ser = serial.Serial() ser.baudrate = 115200
+ser = serial.Serial() 
+ser.baudrate = 115200
 ser.port = "/dev/ttyUSB0"   # if using Linux
 ser.timeout = 10            # time out in seconds
 server=socket(AF_INET,SOCK_STREAM)
