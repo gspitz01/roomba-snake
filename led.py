@@ -1,9 +1,6 @@
 import serial               # PySerial: https://pypi.python.org/pypi/pyserial
 
 ser = serial.Serial()
-
-
-
 #All LED stuff, no need to touch.
 #Ascii values for LED stuff
 
