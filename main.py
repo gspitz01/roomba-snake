@@ -10,7 +10,9 @@ ser.baudrate = 115200
 ser.port = "/dev/ttyUSB0"   # if using Linux
 ser.timeout = 10            # time out in seconds
 server=socket(AF_INET,SOCK_STREAM)
-host="192.168.1.114"
+#************************CHANGE HOST IP************************************
+host = "192.168.1.115"
+#************************CHANGE HOST IP************************************
 port=5150
 server.connect((host,port))
 # Open serial port for communication
