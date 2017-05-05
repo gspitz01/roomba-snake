@@ -39,9 +39,6 @@ def roombaCreate(mainRoomba):
     
     for i in range(0,3):
             newRoomba=otherRoomba(roombaColors[i+1],roombaColors[i])
-                #TODO NETWORK
-                #send an OFF led to all of them by sending this line below
-                #ser.write(display["OFF"]())
             listOfRoombas.append(newRoomba)
 
 #Add in the amount of Roombas you're using and the colors on their heads
