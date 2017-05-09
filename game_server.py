@@ -1,103 +1,19 @@
 from socket import *
+from networking import *
 from game_utilities import *
 from threading import Thread
 
 # J = 111
 # B' = 116
 
-# Send to Follower Commands
-# 0 = Drive to random place
-# 1 = Follow color
-# 2 = Stop
-SEND_TO_FOLLOWER_COMMANDS = [0, 1, 2]
-
-MSGLEN = 1024
 HOST = ""
 PORT = 6543
 
 # A map from COLOR to IP ADDRESS
-COLOR_TO_IP = { 'peach': '192.168.1.111', 'magenta': '192.168.1.103' }
+# THIS MUST BE THE SAME ON ALL ROOMBAS
+#COLOR_TO_IP = { 'peach': '192.168.1.111', 'magenta': '192.168.1.103' }
+COLOR_TO_IP = { 'red' : '192.168.1.7' }
 
-class RoombaConnectionThread(Thread):
-    '''
-    An abstract superclass for handling communication with a Roomba
-    Subclasses must define run()
-    '''
-    def __init__(self, clientsocket, address):
-        super(RoombaConnectionThread, self).__init__()
-        self._socket = clientsocket
-        self._address = address
-        
-    def send(self, msg):
-        '''
-        Send a message to the Roomba
-        This code is from the Python 3 Documentation
-        How-To on Sockets https://docs.python.org/3/howto/sockets.html
-        '''
-        msg = msg.ljust(MSGLEN, b'\0')
-        totalsent = 0
-        while totalsent < MSGLEN:
-            sent = self._socket.send(msg[totalsent:])
-            if sent == 0:
-                raise RuntimeError("Socket connection broken. Found while sending.")
-            totalsent = totalsent + sent
-
-    def receive(self):
-        '''
-        Receive data from the Roomba
-        This code is from the same source as send()
-        '''
-        chunks = []
-        bytes_recd = 0
-        while bytes_recd < MSGLEN:
-            chunk = self._socket.recv(min(MSGLEN - bytes_recd, 2048))
-            if chunk == b'':
-                raise RuntimeError("Client connection lost from ", self._address, ".")
-            chunks.append(chunk)
-            bytes_recd = bytes_recd + len(chunk)
-        return b''.join(chunks)
-    
-
-class RoombaInitializeFollowerThread(RoombaConnectionThread):
-    '''
-    A RoombaConnectionThread to deal with 
-    '''
-    def __init__(self, clientsocket, address):
-        super(RoombaInitializeFollowerThread, self).__init__(clientsocket, address)
-        
-    def run(self):
-        '''
-        This is the main execution of the Thread
-        It gets called by start() when it creates a new thread
-        '''
-        self.send_go_to_random_place()
-
-    def send_go_to_random_place(self):
-        self.send(bytearray([SEND_TO_FOLLOWER_COMMANDS[0]]))
-
-class RoombaSendStopToFollowerThread(RoombaConnectionThread):
-    '''
-    A RoombaConnectionThread to deal with sending stop to a Roomba
-    '''
-    def __init__(self, clientsocket, address):
-        super(RoombaSendStopToFollowerThread, self).__init__(clientsocket, address)
-
-    def run(self):
-        self.send(bytearray([SEND_TO_FOLLOWER_COMMANDS[1]]))
-
-class RoombaSendColorToFollowerThread(RoombaConnectionThread):
-    '''
-    A RoombaConnectionThread to deal with sending a color to a Roomba
-    '''
-    def __init__(self, clientsocket, address, next_color):
-        super(RoombaSendColorToFollowerThread, self).__init__(clientsocket, address)
-        self._next_color = next_color
-
-    def run(self):
-        to_send = bytearray([SEND_TO_FOLLOWER_COMMANDS[2]])
-        to_send.extend(self._next_color.encode())
-        self.send(to_send)
-        
 class GameServer:
     def __init__(self, host, port, color_to_ip_dict, address_of_main_roomba):
         '''
@@ -154,6 +70,5 @@ class GameServer:
         self._server.close()
         
 game = GameServer(HOST, PORT, COLOR_TO_IP, '192.168.1.112')
-game.send_found_to_color('peach', 'magenta')
-game.send_found_to_color('magenta', 'peach')
+game.send_found_to_color('red', 'red')
 game.close()
