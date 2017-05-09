@@ -3,11 +3,14 @@ import serial
 import time
 import sys
 
+'''
 ser = serial.Serial()
 ser.baudrate = 57600
 ser.port = "/dev/ttyUSB0"   # if using Linux
 ser.timeout = 10            # time out in seconds
- 
+
+#FollowerRoomba.translate_color()
+
 # Open serial port for communication
 ser.open()
  
@@ -20,8 +23,9 @@ else:
 #Turns on the main roomba
 ser.write(bytearray([128, 131]))
 time.sleep(1)  # need to pause after send mode
+'''
 
-MSGLEN = 2048
+MSGLEN = 1024
 HOST = "192.168.1.110"
 PORT = 6543
 
@@ -29,21 +33,22 @@ class FollowerRoomba:
     def __init__(self, host, port):
         self._sock = socket(AF_INET, SOCK_STREAM)
         self._sock.connect((host, port))
-        self.send_roomba_type()
-        self.get_color()
+        self.receive_start_drive_random()
+        self.receive_color_number()
 
-    def send_roomba_type(self):
-        self.send(bytearray([0]))
+    def receive_start_drive_random(self):
+        print("Driving random", self.receive()[0])
 
-    def get_color(self):
-        self._color = self.receive_color()
-        self.send_color_confirmation()
+    def receive_color_number(self):
+        data = self.receive()
+        print("Color command received")
+        self.follow(self.translate_color(data))
 
-    def receive_color(self):
-        return self.receive()[0]
+    def follow(self, color):
+        print("Starting to follow", color.decode(), "...")
 
-    def send_color_confirmation(self):
-        self.send(bytearray([self._color]))
+    def translate_color(self, color_data):
+        return color_data[1:7]
         
     def send(self, msg):
         msg = msg.ljust(MSGLEN, b'\0')
@@ -66,13 +71,13 @@ class FollowerRoomba:
         return b''.join(chunks)
 
     def process_bytes(self, bytes_to_process):
-        ser.write(bytes_to_process[:5])
-        time.sleep(1)
-        ser.write(bytearray([137, 0, 0, 0, 0]))
+        #ser.write(bytes_to_process[:5])
+        #time.sleep(1)
+        #ser.write(bytearray([137, 0, 0, 0, 0]))
+        pass
 
     def close(self):
         self._sock.close()
 
-
 froomba = FollowerRoomba(HOST, PORT)
-
+froomba.close()
