@@ -1,11 +1,16 @@
+"""This is the file for the main Roomba that the user will be controlling along
+with the initialization of the other roombas.
+The controller stuff will be interconnected with this program the most
+"""
+
 import sys  # for exit()
 import time  # for sleep()
-# shuffle was for if we wanted a randomized order for colors.
-from random import shuffle
+from random import shuffle  # to randomize the order to find the roombas in
 
 import serial  # PySerial: https://pypi.python.org/pypi/pyserial
-from opcodes import *
-from Roomba import *
+from bytecomands import byte_commands  # module to hold byte key values
+from opcodes import *  # for ser.write commands
+from Roomba import *  # for roomba class that holds state and number to follow
 
 ser = serial.Serial()
 ser.baudrate = 115200
@@ -30,8 +35,9 @@ else:
 def roomba_create():
     """
     Initializes and sets the roombas states by creating them,
-    setting their color according to the given colors in roombaColors
-    Then sets the color they follow by using the previous color in the array
+    setting their number by setting them equal to either 0 or 1
+    then sends the server commands telling which roomba is which
+    along with setting their offstate
     """
     global LIST_OF_ROOMBAS
     LIST_OF_ROOMBAS = []
@@ -40,18 +46,22 @@ def roomba_create():
         new_roomba = OtherRoomba(position)
         LIST_OF_ROOMBAS.append(new_roomba)
         if position == 1:
+            # Sends 5 bytes of 111 to indicate that it is roomba 1
             server.send(b'\x6F\x6F\x6F\x6F\x6F')
         else:
+            # Sends 5 bytes of 222 to indicate that is roomba 2
             server.send(b'\xDE\xDE\xDE\xDE\xDE')
+        # Sends the byte command for the Roomba to drive out randomly
+        server.send('\x00\x00\x00\x00\x01')
+    shuffle(LIST_OF_ROOMBAS)
 
 
-# Add in the amount of Roombas you're using and the colors on their heads
-# Initializes the other roombas to an off state and gives their colors
+# Initializes the rounds and creates the Roombas.
 current_round = 0
 main_roomba = MainRoomba(LIST_OF_ROOMBAS[current_round])
 roomba_create()
 
-# Creates the main roomba and tells it that the next color it has to find.
+# Creates the main roomba and tells it that the next number it has to find.
 
 # Turns on the main roomba
 ser.write(bytearray([128, 131]))
@@ -59,31 +69,47 @@ time.sleep(1)  # need to pause after send mode
 
 """
 This is essentially the main that displays which roomba are we currently at.
-When the main Roomba sees another roomba with a certain color,
+When the main Roomba hits the other roomba's bumper and it has the correct number,
 the other roomba will turn on and start to follow the main Roomba.
+by copying commands sent to the main Roomba
 """
 while current_round < LIST_OF_ROOMBAS:
     buffer()
     display[current_round + 1]()
+    data = server.recv(5)
     ser.write(142, 7)
-    data = ser.read()
-    if data > 0 and data < 4:
-        server.send()
-        # TODO When the main_roomba detects a certain color in front of it, the
-        # roomba with that color will turn on.
-        #    if(main_roomba.is_correct_number()
-        # TODO Send the ON opcodes to the other roomba and then turn it on so it starts driving.
-        # Network configuration comes in here
-        # Checks for the Roomba that contains the wanted color by the main
-        # Roomba.
-    for roomba in LIST_OF_ROOMBAS:
-        if main_roomba.is_correct_number(roomba.number):
-            if current_round < LIST_OF_ROOMBAS:
-                main_roomba.number = LIST_OF_ROOMBAS[current_round + 1]
-                current_round += 1
-                roomba.state = True
-                server.send()
-# opcodes display to indicate being done and then shuts off everything
+    bump = ser.read()
+    # Sends the bump happened command
+    if bump > 0 and bump < 4:
+        server.send(b'\xFF\xFF\xFF\xFF\xFF')
+        # If the server sends a bump back the roomba spins 180 in place
+        data = server.recv(5)
+        if data == b'\xFF\xFF\xFF\xFF\xFF':
+            movement["clockwise"]()
+            time.sleep(4.0825)
+    roomba_found = byte_commands[data]
+    # Checks if the bumped roomba was the right one then iterates through the list
+    # to find it
+    if main_roomba.is_correct_number(roomba_found):
+        for roomba in LIST_OF_ROOMBAS:
+            if main_roomba.is_correct_number(roomba.number):
+                """Advances the round and now sets the main roomba
+                to find the next roomba
+                Activates the bumped roomba so now it starts listening
+                for commands
+                """
+                if current_round < len(LIST_OF_ROOMBAS):
+                    current_round += 1
+                    main_roomba.number = LIST_OF_ROOMBAS[current_round].number
+                    roomba.state = True
+                    # Sends the command to activate those roombas.
+                    server.send(b'\xFF\xFF\xFF\xFF\xFF')
+    if current_round == len(LIST_OF_ROOMBAS):
+        break
+
+        # opcodes display to indicate being done and then shuts off everything
 buffer()
 display[current_round + 1]()
+server.send(b'\x00\x00\x00\x00\x00')
 server.close()
+ser.close()
