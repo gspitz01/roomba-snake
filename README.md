@@ -19,7 +19,8 @@ After every Roomba has been found, the user will be told that the game is done a
 
 Plan:
 Have someone use a ps4/ps3 controller to control the main Roomba.
-They will control the Roomba to move towards other Roombas. They will bump their Roomba into the other Roomba at which point the other Roomba will follow the controlled one. They will procede to find more Roombas until they have found the required amount.
+They will control the Roomba to move towards other Roombas. They will bump their Roomba into the other Roomba's bumper at which point the other Roomba will follow the controlled one. They will procede to find more Roombas until they have found the required amount.
+For simplicity and environment reasons, the user will be able to spin the other Roombas in place so that the main Roomba can easily bump into the other Roomba's bumper.
 
 Roles:
 Alvin: Movement and networking interaction.
