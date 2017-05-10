@@ -2,8 +2,10 @@
 by checking if they are following/finding the correct number
 """
 
+
 class MainRoomba(object):
     """The main Roomba that player controls which has the next number it has to find"""
+
     def __init__(self, number):
         self._number = number
 
@@ -18,23 +20,27 @@ class MainRoomba(object):
         in the OtherRoomba class, it indicates what the roomba has to folow
         """
         return self._number
+
     @number.setter
     def number(self, number):
-        self.number = number
+        self._number = number
+
 
 class OtherRoomba(MainRoomba):
     """The class for the other roombas which will have a state explaining when they will follow
     and a number to indicate the order in which they will be found.
     """
+
     def __init__(self, number, state=False):
         MainRoomba.__init__(self, number)
         self._state = state
 
-    #Checks if the roomba is on
+    # Checks if the roomba is on
     @property
     def state(self):
         """Get/Set the follow state of the current Roomba to see if it currently activated"""
         return self._state
+
     @state.setter
     def state(self, state):
-        self.state = state
+        self._state = state
