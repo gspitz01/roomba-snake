@@ -16,7 +16,7 @@ E = 69
 W = 87
 F = 70
 
-VELOCITY = 100 #Change velocity if you want the default velocity to change.
+VELOCITY = 100 #Change this number if you want the default velocity to change.
 
 
 movement= lambda x, y :ser.write(bytearray([137, 0, VELOCITY, x, y]))
