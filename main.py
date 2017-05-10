@@ -77,6 +77,16 @@ while current_round < LIST_OF_ROOMBAS:
     buffer()
     display[current_round + 1]()
     data = server.recv(5)
+    ser.write(142, 7)
+    bump = ser.read()
+    # Sends the bump happened command
+    if bump > 0 and bump < 4:
+        server.send(b'\xFF\xFF\xFF\xFF\xFF')
+        # If the server sends a bump back the roomba spins 180 in place
+        data = server.recv(5)
+        if data == b'\xFF\xFF\xFF\xFF\xFF':
+            movement["clockwise"]()
+            time.sleep(4.0825)
     roomba_found = byte_commands[data]
     # Checks if the bumped roomba was the right one then iterates through the list
     # to find it
@@ -103,4 +113,3 @@ display[current_round + 1]()
 server.send(b'\x00\x00\x00\x00\x00')
 server.close()
 ser.close()
-
