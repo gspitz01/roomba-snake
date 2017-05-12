@@ -1,6 +1,6 @@
-import serial  # PySerial: https://pypi.python.org/pypi/pyserial
-
-ser = serial.Serial()
+#import serial  # PySerial: https://pypi.python.org/pypi/pyserial
+from game_utilities import Srial
+ser = Srial()
 
 
 # All LED stuff, no need to touch.
