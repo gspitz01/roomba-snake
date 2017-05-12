@@ -13,7 +13,10 @@ import time  # for sleep()
 from random import randint, random
 from socket import *
 from threading import Thread
-
+# !!! This is removed for testing
+# Put it back in to actually send commands
+# Also change Srial() in FollowerRoomba to Serial()
+# from serial import Serial()
 from game_utilities import *
 from opcodes import *
 
