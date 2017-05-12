@@ -237,19 +237,6 @@ class GameServer:
         for socket in self._roomba_socket_list:
             socket.close()
         self._server.close()
-'''
-#Use of GameServer:
-HOST = ""
-PORT = 6543
-
-# A map from NUMBER to IP ADDRESS
-# THIS MUST BE THE SAME ON ALL ROOMBAS
-NUMBER_TO_IP = { 1 : '192.168.1.7' }
-
-game = GameServer(HOST, PORT, NUMBER_TO_IP, '192.168.1.112')
-game.send_found_to_number(1, 1)
-game.close()
-'''
 
 class FollowerRoomba(RoombaConnection):
     def __init__(self, host, port):
