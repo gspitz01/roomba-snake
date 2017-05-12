@@ -102,15 +102,6 @@ class SocketConnection():
             bytes_recd = bytes_recd + len(chunk)
         return b''.join(chunks)
 
-    @property
-    def is_open(self):
-        """Getter to see if the serial port is opened"""
-        return self._is_open
-
-    def close(self):
-        """Closes the serial port and socket"""
-        self._socket.close()
-        self._is_open = False
 
     @property
     def address(self):
@@ -396,3 +387,13 @@ class FollowerRoomba(RoombaConnection):
             time.sleep(random(2))
         """
         self._ser.write("Driving random!")
+
+    @property
+    def is_open(self):
+        """Getter to see if the serial port is opened"""
+        return self._is_open
+
+    def close(self):
+        """Closes the serial port and socket"""
+        self._socket.close()
+        self._is_open = False
