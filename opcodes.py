@@ -20,7 +20,7 @@ VELOCITY = 100 #Change this number if you want the default velocity to change.
 
 
 movement= lambda x, y :ser.write(bytearray([137, 0, VELOCITY, x, y]))
-"""Makes the Roomba move in the direction wanted by changing the x and y values
+"""Makes the Roomba move in the direction wanted by changing the x and y values"""
 
 
 display_led= lambda w, x, y, z : ser.write(bytearray([164, w, x, y, z]))
@@ -32,13 +32,13 @@ display_led= lambda w, x, y, z : ser.write(bytearray([164, w, x, y, z]))
 buffer= lambda: display_led(SPACE, SPACE, SPACE, SPACE)
 """Clears the LED display"""
 
-********************************************************
+#********************************************************
 # Lambda example on how to use them
 # display[1]() will call display_led which in turn calls
 # display_led(FIRST, SPACE, SPACE, SPACE)
 # which in turn calls 
 # ser.write(164,49,32,32,32)
-********************************************************
+#********************************************************
 
 # LED displays, ON and Off are sent to other roombas.
 display = {
