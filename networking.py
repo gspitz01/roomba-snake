@@ -1,3 +1,4 @@
+
 """
 Author:Gregory Spitz unless otherwise mentioned.
 Code for sending back and forth Roomba data along with maintaining game information
@@ -354,6 +355,7 @@ class FollowerRoomba(RoombaConnection):
         """Closes the socket and serial port for the roomba"""
         self._ser.close()
         self._sock.close()
+        self._is_open = False
 
     def deal_with_server_commands(self, data):
         """
@@ -392,8 +394,3 @@ class FollowerRoomba(RoombaConnection):
     def is_open(self):
         """Getter to see if the serial port is opened"""
         return self._is_open
-
-    def close(self):
-        """Closes the serial port and socket"""
-        self._socket.close()
-        self._is_open = False
