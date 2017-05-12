@@ -10,7 +10,8 @@ PORT = 6543
 # A map from NUMBER to IP ADDRESS
 # One of them must be IDENTITIES['main_roomba']
 # Other possible identities are IDENTITIES['identity_1'] through IDENTITIES['identity_6']
-IP_TO_ID = { '192.168.1.5': IDENTITIES['main_roomba'] }
+IP_TO_ID = { '192.168.1.5': IDENTITIES['main_roomba'],
+             '192,168.1.4': IDENTITIES['identity_1']}
 
 ids = IP_TO_ID.values()
 ids.remove(IDENTITIES['main_roomba'])
