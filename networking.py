@@ -63,6 +63,7 @@ class SocketConnection():
     as explained by this excerpt from the Python Documentation:
     "Now we come to the major stumbling block of sockets - send and recv operate on the network buffers. They do not necessarily handle all the bytes you hand them (or expect from them), because their major focus is handling the network buffers. In general, they return when the associated network buffers have been filled (send) or emptied (recv). They then tell you how many bytes they handled. It is your responsibility to call them again until your message has been completely dealt with."
     Basically I've decided to treat this like library code and subclass at my will.
+    If we run into latency issues, I will adjust this.
     '''
 
     def __init__(self, clientsocket, address, is_open=True):
