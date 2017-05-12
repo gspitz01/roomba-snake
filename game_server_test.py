@@ -4,10 +4,10 @@ HOST = ""
 PORT = 6543
 
 # A map from NUMBER to IP ADDRESS
-# THIS MUST BE THE SAME ON ALL ROOMBAS
-NUMBER_TO_IP = { 1 : '192.168.1.5' }
+# One of them must be SERVER_CODES['main_roomba']
+IP_TO_ID = { '192.168.1.5': SERVER_CODES['main_roomba'] }
 
-game_server = GameServer(HOST, PORT, NUMBER_TO_IP, '192.168.1.5')
+game_server = GameServer(HOST, PORT, IP_TO_ID)
 user_input = ''
 while user_input != 'quit':
     user_input = input("What to send: ")
@@ -16,7 +16,7 @@ while user_input != 'quit':
     else:
         bumped_true = game_server.write(user_input.encode())
     if bumped_true:
-        print("Bumped!")
+        print(bumped_true)
     else:
         print("No bumps")
 game_server.close()
