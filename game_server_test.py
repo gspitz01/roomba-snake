@@ -1,3 +1,7 @@
+'''
+This is not working yet
+'''
+
 from networking import GameServer, SERVER_CODES, IDENTITIES
 
 HOST = ""
@@ -9,7 +13,7 @@ PORT = 6543
 IP_TO_ID = { '192.168.1.5': IDENTITIES['main_roomba'] }
 
 ids = IP_TO_ID.values()
-ids.remove(INDENTITIES['main_roomba'])
+ids.remove(IDENTITIES['main_roomba'])
 id_index = 0
 
 game_server = GameServer(HOST, PORT, IP_TO_ID, ids[id_index])
