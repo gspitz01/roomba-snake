@@ -42,12 +42,13 @@ MSGLEN = 2048
 
 class SocketConnection():
     '''
-    An a superclass for handling communication with a Roomba
-    This is basically jsut for those send and receive methods
+    A superclass for handling communication with a Roomba
+    This is basically just for those send and receive methods
     This class is the only one that needs to be aware of the MSGLEN
     We mentioned in class simplifying this but this needs to be this complex
     as explained by this excerpt from the Python Documentation:
     "Now we come to the major stumbling block of sockets - send and recv operate on the network buffers. They do not necessarily handle all the bytes you hand them (or expect from them), because their major focus is handling the network buffers. In general, they return when the associated network buffers have been filled (send) or emptied (recv). They then tell you how many bytes they handled. It is your responsibility to call them again until your message has been completely dealt with."
+    Basically I've decided to treat this like library code and subclass at my will.
     '''
     def __init__(self, clientsocket, address):
         self._socket = clientsocket
@@ -360,16 +361,3 @@ froomba = FollowerRoomba(HOST, PORT)
 '''
 
 
-class MainRoomba(AbstractRoombaControllerConnection):
-    def __init__(self, host, port):
-        '''
-        This is the class for the MainRoomba
-        '''
-        # Last parameter here is to start writing drive commands immediately
-        super(MainRoomba, self).__init__(host, port, True)
-
-    def deal_with_server_commands(self, data):
-        '''
-        MainRoomba doesn't need to do anything with server commands
-        '''
-        pass
