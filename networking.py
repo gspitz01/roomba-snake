@@ -125,6 +125,7 @@ class RoombaConnection(SocketConnection):
 class AbstractRoombaConnectionThread(RoombaConnection, Thread):
     '''
     An abstract superclass for handling communication with a Roomba within it's own thread
+    Currently un-used. Keeping it here just in case
     Subclasses must define run()
     '''
     def __init__(self, clientsocket, address):
@@ -139,7 +140,7 @@ class GameServerException(Exception):
         super(GameServerException, self).__init__(message)
 
 class GameServer:
-    def __init__(self, host, port, ip_to_id_dict):
+    def __init__(self, host, port, ip_to_id_dict, start_looking_id):
         '''
         This represents the main controller for all Roomba networking
         Takes host, port, a map from color to IP address for the Roombas, and the address of the main Roomba
@@ -151,12 +152,17 @@ class GameServer:
         self._ip_to_id = ip_to_id_dict
 
         self._num_roombas = len(self._ip_to_id)
+        
+        # Get IP addresses for the main_roomba and the first one to look for
         self._main_roomba = None
+        self._current_roomba = None
         for ip, id in self._ip_to_id.items():
             if id == SERVER_CODES['main_roomba']:
                 self._main_roomba = ip
-        if not self._main_roomba:
-            raise GameServerException("You need to define main_roomba")
+            if id == start_looking_id:
+                self._current_roomba = ip
+        if not self._main_roomba or not self._current_roomba:
+            raise GameServerException("You need to define main_roomba and send in the proper id to look for.")
 
 
         # Start listening for connections
@@ -185,8 +191,6 @@ class GameServer:
         self._main_bump = False
         # Has the Roomba we're looking for been bumped
         self._current_bump = False
-        # The ip address of the roomba we're looking for
-        self._current_roomba = '192.168.1.5'
 
     def write(self, msg):
         '''
@@ -219,14 +223,22 @@ class GameServer:
         # if the main roomba has been bumped
         if self._main_roomba in bumps:
             if bumps[self._main_roomba]:
-                for address, bump in bumps.items():
-                    if address == self._main_roomba:
-                        continue
-                    # Update which one we're looking for here
-                    self._main_bump = False
-                    self._current_bump = False
-                    return self._ip_to_id[address]
+                # And the current roomba has also been bumped
+                if self._current_roomba in bumps:
+                    if bumps[self._current_roomba]:
+                        # Update which one we're looking for here
+                        self._main_bump = False
+                        self._current_bump = False
+                        # Return the id of the one that was bumped
+                        # It's the user's job (right now at least) to broadcast that
+                        # ID so the correct Roomba will start to follow
+                        return self._ip_to_id[address]
         return None
+
+    def update_who_to_look_for(self, ip):
+         for ip, id in self._ip_to_id.items():
+            if id == start_looking_id:
+                self._current_roomba = ip
 
     def check_bump(self, bump_data):
         if bump_data == SERVER_CODES['bumped']:
@@ -251,6 +263,7 @@ class FollowerRoomba(RoombaConnection):
         super(FollowerRoomba, self).__init__(self._sock, (host, port))
 
         # !!! IMPORTANT CHANGE THIS !!!!
+        # Srial is from game_utilities and is just for testing
         self._ser = Srial()
 
         self._ser.baudrate = 115200
@@ -275,10 +288,7 @@ class FollowerRoomba(RoombaConnection):
         self._id = self.receive()
         # If the id is the main roomba
         # start following command immediately
-        if self._id == SERVER_CODES['main_roomba']:
-            self.set_write_drive_commands(True)
-        else:
-            self.set_write_drive_commands(False)
+        self.set_write_drive_commands(self._id == SERVER_CODES['main_roomba'])
         
         data = None
         while data is not SERVER_CODES['stop']:
@@ -296,8 +306,8 @@ class FollowerRoomba(RoombaConnection):
                     # Write to the serial port
                     self._ser.write(data)
             else:
-                # Subclasses must define deal_with_server_commands()
                 self.deal_with_server_commands(data)
+                
             # Sends the bump happened command
             self.send_bumped()
         self.stop()
