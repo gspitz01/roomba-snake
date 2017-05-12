@@ -1,5 +1,6 @@
 from networking import AbstractRoombaControllerConnection, SERVER_CODES, IDENTITIES
 from opcodes import *
+from game_utilities import game_output
 
 class FollowerRoomba(AbstractRoombaControllerConnection):
     def __init__(self, host, port):
