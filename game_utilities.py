@@ -1,5 +1,6 @@
 def game_output(*output_string):
-    print(*output_string)
+    for string in output_string:
+        print string
 
 class Srial:
     def __init__(self):
