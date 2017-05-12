@@ -8,16 +8,38 @@ from threading import Thread
 import sys  # for exit()
 import time  # for sleep()
 from random import randint, random
-import serial  # PySerial: https://pypi.python.org/pypi/pyserial
+#import serial  # PySerial: https://pypi.python.org/pypi/pyserial
 from opcodes import *
 
-MSGLEN = 1024
+'''
+Any non-Roomba opcode commands that the server is going to send
+must be in this dictionary
+'''
+SERVER_CODES = { 'drive_random': b'\x00\x00\x00\x00\x01',
+                         'set_to_1': b'\x00\x00\x00\x00\x01',
+                         'set_to_2': b'\xDE\xDE\xDE\xDE\xDE',
+                         'start_follow': b'\xFF\xFF\xFF\xFF\xFF',
+                 'bumped': b'\xFF\xFF\xFF\xFF\xFF',
+                         'stop': b'\x00\x00\x00\x00\x00',
+                 'no_bump': b'\x00\x00\x00\x00\x00'}
 
-class RoombaConnection():
+class SocketError(Exception):
+    '''
+    An Exception for when sockets go wrong
+    '''
+    def __init__(self, message):
+        super(SocketError, self).__init__(message)
+
+MSGLEN = 2048
+
+class SocketConnection():
     '''
     An a superclass for handling communication with a Roomba
     This is basically jsut for those send and receive methods
     This class is the only one that needs to be aware of the MSGLEN
+    We mentioned in class simplifying this but this needs to be this complex
+    as explained by this excerpt from the Python Documentation:
+    "Now we come to the major stumbling block of sockets - send and recv operate on the network buffers. They do not necessarily handle all the bytes you hand them (or expect from them), because their major focus is handling the network buffers. In general, they return when the associated network buffers have been filled (send) or emptied (recv). They then tell you how many bytes they handled. It is your responsibility to call them again until your message has been completely dealt with."
     '''
     def __init__(self, clientsocket, address):
         self._socket = clientsocket
@@ -34,7 +56,7 @@ class RoombaConnection():
         while totalsent < MSGLEN:
             sent = self._socket.send(msg[totalsent:])
             if sent == 0:
-                raise RuntimeError("Socket connection broken. Found while sending.")
+                raise SocketError("Socket connection broken. Found while sending.")
             totalsent = totalsent + sent
 
     def receive(self):
@@ -47,10 +69,43 @@ class RoombaConnection():
         while bytes_recd < MSGLEN:
             chunk = self._socket.recv(min(MSGLEN - bytes_recd, 2048))
             if chunk == b'':
-                raise RuntimeError("Client connection lost from ", self._address, ".")
+                msg = "Client connection lost from ", self._address, "."
+                raise SocketError(msg)
             chunks.append(chunk)
             bytes_recd = bytes_recd + len(chunk)
         return b''.join(chunks)
+
+    def close(self):
+        self._socket.close()
+
+class RoombaConnection(SocketConnection):
+    '''
+    This is a wrapper class to deal with receiving only 5 bytes
+    and failing elegantly
+    '''
+    def __init__(self, clientsocket, address):
+        super(RoombaConnection, self).__init__(clientsocket, address)
+
+    def send(self, msg):
+        '''
+        Just wrapping send in try so as to fail more elegantly
+        '''
+        try:
+            super(RoombaConnection, self).send(msg)
+        except SocketError as err:
+            game_output(err)
+
+    def receive(self):
+        '''
+        Overload receive to just return 5 bytes
+        Also wrapping in a try
+        '''
+        data = ''
+        try:
+            return super(RoombaConnection, self).receive()[:5]
+        except SocketError as err:
+            # If the connection fails return the stop code
+            return SERVER_CODES['stop']
 
 class AbstractRoombaConnectionThread(RoombaConnection, Thread):
     '''
@@ -60,57 +115,9 @@ class AbstractRoombaConnectionThread(RoombaConnection, Thread):
     def __init__(self, clientsocket, address):
         RoombaConnection.__init__(self, clientsocket, address)
         Thread.__init__(self)
-
-
-SERVER_CODES = { 'drive_random': b'\x00\x00\x00\x00\x01',
-                         'set_to_1': b'\x00\x00\x00\x00\x01',
-                         'set_to_2': b'\xDE\xDE\xDE\xDE\xDE',
-                         'start_follow': b'\xFF\xFF\xFF\xFF\xFF',
-                         'stop': b'\x00\x00\x00\x00\x00' }
-
-# Send to Follower Commands
-# 0 = Drive to random place
-# 1 = Follow color
-# 2 = Stop
-SEND_TO_FOLLOWER_COMMANDS = [0, 1, 2]
-
-class RoombaInitializeFollowerThread(AbstractRoombaConnectionThread):
-    '''
-    A RoombaConnectionThread to deal with 
-    '''
-    def __init__(self, clientsocket, address):
-        super(RoombaInitializeFollowerThread, self).__init__(clientsocket, address, number, server)
-        self._number = number
-        self._server = server
-        
-    def run(self):
-        '''
-        This is the main execution of the Thread
-        It gets called by start() when it creates a new thread
-        '''
-        self.send_go_to_random_place()
-        self.receive_bump()
-
-    def send_go_to_random_place(self):
-        self.send(SERVER_CODES['drive_random'])
-
-    def receive_bump(self):
-        data = self.receive()[5]
-        if data == SERVER_CODES['start_follow']:
-            server.check_bump(self._number)
-
-class SendCorrectBumpToMainThread(AbstractRoombaConnectionThread):
-    '''
-    '''
-    def __init__(self, clientsocket, address):
-        super(SendCorrectBumpToMainThread, self).__init__(clientsocket, address)
-
-    def run(self):
-        self.send(SERVER_CODES['start_follow'])
-
            
 class GameServer:
-    def __init__(self, host, port, number_to_ip_dict, address_of_main_roomba, current_number):
+    def __init__(self, host, port, number_to_ip_dict, address_of_main_roomba):
         '''
         This represents the main controller for all Roomba networking
         Takes host, port, a map from color to IP address for the Roombas, and the address of the main Roomba
@@ -123,7 +130,6 @@ class GameServer:
         self._num_roombas = len(self._number_to_ip)
         self._main_roomba = address_of_main_roomba
 
-        self._current_number = current_number
 
         # Start listening for connections
         self._server.listen(self._num_roombas)
@@ -133,51 +139,61 @@ class GameServer:
         while len(self._roomba_socket_list) < self._num_roombas:
             (clientsocket, address) = self._server.accept()
             game_output("Request from", address)
-
+            self._roomba_socket_list.append(RoombaConnection(clientsocket, address))
             # If it's the main Roomba, create a MainRoombaThread
             if address[0] == self._main_roomba:
-                self._roomba_socket_list.append((clientsocket, address))
                 self._main_roomba_socket = (clientsocket, address)
+                game_output("Connected to Main Roomba at", address)
             # If it's a different Roomba, create a FollowerThread
             elif address[0] in self._color_to_ip.values():
-                self._roomba_socket_list.append((clientsocket, address))
                 game_output("Accepted socket from", address)
-                rt = RoombaInitializeFollowerThread(clientsocket, address, self)
-                rt.start()
-                rt.join()
-        print("Everything connected")
-                
-    def get_socket_from_number(self, number):
-        ip_address = self._number_to_ip[number]
-        return next((x for x in self._roomba_socket_list if x[1][0] == ip_address), None)
+        game_output("Everything connected")
 
-    def send_found_to_number(self, number, next_number):
-        roomba_socket = self.get_socket_from_number(number)
-        if roomba_socket:
-            (socket, address) = roomba_socket
-            # Do something here
+        # Has the _main_roomba been bumped
+        self._main_bump = False
+        # Has the Roomba we're looking for been bumped
+        self._current_bump = False
+        # The ip address of the roomba we're looking for
+        self._current_roomba = '192.168.1.5'
+
+    def write(self, msg):
+        '''
+        This is where the action happens
+        The server always sends and then receives
+        to every Roomba in the socket list
+        It then figures out if there has been
+        a succesful bump and returns true if so
+        '''
+        bumps = []
+        for conn in self._roomba_socket_list:
+            # First send the message
+            conn.send(msg)
+            # Then receive the bump data
+            bump_data = conn.receive()
+
+            # !!! Change SocketConnection._address to a property
+            bumps.append(self.check_bump(bump_data, conn._address))
+        for bump in bumps:
+            if bump:
+                # Update which one we're looking for here
+                self._main_bump = False
+                self._current_bump = False
+                return True
+        return False
+
+    def check_bump(self, bump_data, address):
+        if address == self._main_roomba:
+            self._main_bump = True
+        elif address == self._current_roomba:
+            self._current_bump = True
+        if self._main_bump and self._current_bump:
+            return True
         else:
-            game_output("Could not send color to", roomba_socket[1][0])
-
-    def send_stop_to_color(self, number):
-        roomba_socket = self.get_socket_from_number(number)
-        if roomba_socket:
-            (socket, address) = roomba_socket
-            rt = RoombaSendStopToFollowerThread(socket, address)
-            rt.start()
-        else:
-            game_output("Could not send stop to", roomba_socket[1][0])
-
-    def check_bump(self, number):
-        if number == self.current_number():
-            self.send_correct_bump()
-
-    def send_correct_bump(self):
+            return False
         
-
     def close(self):
         for socket in self._roomba_socket_list:
-            socket[0].close()
+            socket.close()
         self._server.close()
 '''
 #Use of GameServer:
@@ -193,63 +209,77 @@ game.send_found_to_number(1, 1)
 game.close()
 '''
 
-
-# Send to Follower Commands
-# 0 = Drive to random place
-# 1 = Follow color
-# 2 = Stop
-# 3 = Follower Bumped
-SEND_TO_FOLLOWER_COMMANDS = [0, 1, 2, 3]
-
-class FollowerRoomba(RoombaConnection):
+class RoombaControllerConnection(RoombaConnection):
     def __init__(self, host, port):
         '''
-        This is the main class for a FollowerRoomba
+        This is a super class for Roombas
+        It holds functions common to both FollowerRoombas
+        and the MainRoomba
         '''
         self._sock = socket(AF_INET, SOCK_STREAM)
         self._sock.connect((host, port))
-        super(FollowerRoomba, self).__init__(self._sock, (host, port))
+        super(RoombaControllerConnection, self).__init__(self._sock, (host, port))
 
-        self._ser = serial.Serial()
+        self._ser = Srial()
         self._ser.baudrate = 115200
-        self._ser.port = "/dev/ttyUSB0"   # if using Linux
-        self._ser.timeout = 10 # time out in seconds
+        self._ser.port = "/dev/ttyUSB0" # if using Linux
+        self._ser.timeout = 10 # time-out in seconds
 
-        # Most of the following is from Alvin
-        
         # Open serial port for communication
-        # Print port open or closed
         self._ser.open()
+
+        # Print port open or closed
         if self._ser.isOpen():
             print('Open: ' + self._ser.portstr)
         else:
             sys.exit()
 
+        # Turns on the main roomba
         self._ser.write(bytearray([128, 131]))
-        time.sleep(1)
+        time.sleep(1)  # need to pause after send mode
+
+    def send_bumped(self):
+        if self.bumped():
+            self.send(SERVER_CODES['bumped'])
+        else:
+            self.send(SERVER_CODES['no_bump'])
+
+    def bumped(self):
+        self._ser.write(142, 7)
+        bump = self._ser.read()
+        if bump in range(1, 4):
+            return True
+        else:
+            return False
+        
+    def stop(self):
+        self._ser.write(bytearray([137, 0, 0, 0, 0]))
+        
+    def close(self):
+        self._ser.close()
+        self._sock.close()
+
+
+class FollowerRoomba(RoombaControllerConnection):
+    def __init__(self, host, port):
+        '''
+        This is the main class for a FollowerRoomba
+        '''
+        super(FollowerRoomba, self).__init__(host, port)
 
         # Holds the number for what Roomba this will be and if it is active.
         roomba_position_number = None
         roomba = False
 
-        #Server codes
-        # 1 = drive random
-        # 111 is #1
-        # 222 is set #2
-                         
-        while True:
+        data = None
+                   
+        while data is not SERVER_CODES['stop']:
             data = self.receive()
             # Replicates the commands sent into the main Roomba
             # so that this follower roomba can simulate following
             if roomba:
                 self._ser.write(bytearray(data))
-            else:
-                # If the Roomba is not activated, the Roomba will check to
-                # see if the mainRoomba has bumped into this one
-                self._ser.write(142, 7)
-                bump = self._ser.read()
-                if bump > 0 and bump < 4:
-                    self.send(b'\xFF\xFF\xFF\xFF\xFF')
+            
             # If the five bytes equal just 1,
             # this should cause the Roombas to start driving to random spots by
             # making them turn/drive randomly
@@ -283,96 +313,37 @@ class FollowerRoomba(RoombaConnection):
             # the roombas will stop
             elif data == b'\x00\x00\x00\x00\x00':
                 break
+            # Send the bump data
+            self.send_bumped()
 
-        # Stops the roomba
-        buffer()
-        self._ser.write(bytearray([137, 0, 0, 0, 0]))
+        self.stop()
         self.close()
-        self._ser.close()
-
-    def receive_start_drive_random(self):
-        data = self.receive()[0]
-        if data == SEND_TO_FOLLOWER_COMMANDS[0]:
-            print("Driving random")
-        else:
-            raise Exception("Wrong command received looking for ", SEND_TO_FOLLOWER_COMMANDS[0], ", received", data)
-
-    def receive_color_number(self):
-        data = self.receive()
-        if data[0] == SEND_TO_FOLLOWER_COMMANDS[1]:
-            print("Color command received")
-            self.follow(self.translate_color(data))
-
-    def follow(self, color):
-        print("Starting to follow", color.decode(), "...")
-
-    def translate_color(self, color_data):
-        return color_data[1:7]
-        
-    def process_bytes(self, bytes_to_process):
-        #ser.write(bytes_to_process[:5])
-        #time.sleep(1)
-        #ser.write(bytearray([137, 0, 0, 0, 0]))
-        pass
-
-    def send_bumped(self):
-        self.send(SEND_TO_FOLLOWER_COMMANDS[3])
-    
-    def close(self):
-        self._sock.close()
 '''
 Use of FollowerRoomba:
 HOST = "192.168.1.128"
 PORT = 6543
 
 froomba = FollowerRoomba(HOST, PORT)
-froomba.close()
 '''
 
 
-class MainRoomba(RoombaConnection):
+class MainRoomba(RoombaControllerConnection):
     def __init__(self, host, port):
         '''
-        This is the main class for the MainRoomba
+        This is the class for the MainRoomba
         '''
-        self._ser = serial.Serial()
-        self._ser.baudrate = 115200
-        self._ser.port = "/dev/ttyUSB0"   # if using Linux
-        self._ser.timeout = 10            # time out in seconds
+        super(MainRoomba, self).__init__(host, port)
+        data = None
+        while data is not SERVER_CODES['stop']:
+            # Get data from the server
+            data = self.receive()
 
-        # Open serial port for communication
-        ser.open()
-
-        # Print port open or closed
-        if ser.isOpen():
-            print('Open: ' + ser.portstr)
-        else:
-            sys.exit()
-
-        # Turns on the main roomba
-        ser.write(bytearray([128, 131]))
-        time.sleep(1)  # need to pause after send mode
-
-        self._sock = socket(AF_INET, SOCK_STREAM)
-        self._sock.connect((host, port))
-        super(MainRoomba, self).__init__(self._sock, (host, port))
-        while 1:
-            self.receive_commands()
-            bump = self.read_stream()
+            # The main roomba only has to care about
+            # actual drive commands from the server
+            if data not in SERVER_CODES.values():
+                self._ser.write(data)
+                
             # Sends the bump happened command
-            if bump > 0 and bump < 4:
-                self.send(b'\xFF\xFF\xFF\xFF\xFF')
-            # If the server sends a bump back the roomba spins 180 in place
-                data = self.receive()[5]
-                if data == b'\xFF\xFF\xFF\xFF\xFF':
-                    movement["clockwise"]()
-                    time.sleep(4.0825)
-
-    def read_stream(self):
-        ser.write(142, 7)
-        bump = ser.read()
-        return bump
-
-    def receive_commands(self):
-        data = self.receive()
-        
+            self.send_bumped()
+        self.stop()
+        self.close()
